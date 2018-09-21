@@ -34,34 +34,36 @@ class ServerlessPlugin {
     // create the routes in Kong for each function with a Kong event
     for (const f of Object.keys(this.serverless.service.functions)) {
       const func = this.serverless.service.functions[f];
-
-      // find an event named 'kong'
-      for (const event of func.events) {
-        if (event.kong) {
-          // create the route
-          const route = await this.kong.routes.create({
-            service: { id: service.id },
-            paths: event.kong.paths,
-            methods: event.kong.methods,
-            hosts: event.kong.hosts,
-            protocols: event.kong.protocols,
-          });
-
-          // add the lambda plugin to the route
-          const plugin = await this.kong.routes.addPlugin({
-            routeId: route.id,
-            name: 'aws-lambda',
-            config: {
-              aws_key: event.kong.aws_key || config.aws_key,
-              aws_secret: event.kong.aws_secret || config.aws_secret,
-              aws_region: event.kong.region || config.region || this.region,
-              function_name: func.name,
-            },
-            enabled: true,
-          });
-        }
+      const kongEvents = func.events.filter(e => e.kong !== undefined);
+      for (const event of kongEvents) {
+        const route = await this.createRoute(service, event);
+        await this.createPlugin(route, event, config);
       }
     }
+  }
+
+  createRoute(service, event) {
+    return this.kong.routes.create({
+      service: { id: service.id },
+      paths: event.kong.paths,
+      methods: event.kong.methods,
+      hosts: event.kong.hosts,
+      protocols: event.kong.protocols,
+    });
+  }
+
+  createPlugin(route, event, config) {
+    return this.kong.routes.addPlugin({
+      routeId: route.id,
+      name: 'aws-lambda',
+      config: {
+        aws_key: event.kong.aws_key || config.aws_key,
+        aws_secret: event.kong.aws_secret || config.aws_secret,
+        aws_region: event.kong.region || config.region || this.region,
+        function_name: func.name,
+      },
+      enabled: true,
+    });
   }
 }
 
