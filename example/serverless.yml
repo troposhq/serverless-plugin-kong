@@ -1,0 +1,30 @@
+plugins:
+  localPath: '../../'
+  modules:
+    - serverless-plugin-kong
+
+service: example
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - kong:
+          methods:
+            - GET
+          paths:
+            - /
+          protocols:
+            - http
+          aws_secret: asdfasdf
+          region: us-west-1
+
+custom:
+  kong:
+    admin_api_url: http://localhost:8001
+    aws_key: ${env:AWS_ACCESS_KEY_ID}
+    aws_secret: ${env:AWS_SECRET_ACCESS_KEY}

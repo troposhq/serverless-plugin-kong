@@ -1,0 +1,14 @@
+{
+  "name": "@tropos/serverless-plugin-kong",
+  "version": "0.0.0",
+  "description": "Serverless framework plugin to configure Kong.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Alois <alois@troposhq.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@tropos/kong-admin-api-client": "^0.2.0"
+  }
+}
