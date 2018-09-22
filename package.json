@@ -9,6 +9,6 @@
   "author": "Alois <alois@troposhq.com>",
   "license": "MIT",
   "dependencies": {
-    "@tropos/kong-admin-api-client": "^0.2.0"
+    "@tropos/kong-admin-api-client": "^0.2.2"
   }
 }

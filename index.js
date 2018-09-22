@@ -34,10 +34,18 @@ class ServerlessPlugin {
     // create the routes in Kong for each function with a Kong event
     for (const f of Object.keys(this.serverless.service.functions)) {
       const func = this.serverless.service.functions[f];
+      // filter out kong events
       const kongEvents = func.events.filter(e => e.kong !== undefined);
       for (const event of kongEvents) {
+        // create the route
         const route = await this.createRoute(service, event);
-        await this.createPlugin(route, event, config);
+        // add the plugin to the route
+        await this.createPlugin(route, {
+          aws_key: event.kong.aws_key || config.aws_key,
+          aws_secret: event.kong.aws_secret || config.aws_secret,
+          region: event.kong.region || config.region || this.region,
+          function_name: func.name,
+        });
       }
     }
   }
@@ -52,15 +60,15 @@ class ServerlessPlugin {
     });
   }
 
-  createPlugin(route, event, config) {
+  createPlugin(route, config) {
     return this.kong.routes.addPlugin({
       routeId: route.id,
       name: 'aws-lambda',
       config: {
-        aws_key: event.kong.aws_key || config.aws_key,
-        aws_secret: event.kong.aws_secret || config.aws_secret,
-        aws_region: event.kong.region || config.region || this.region,
-        function_name: func.name,
+        aws_key: config.aws_key,
+        aws_secret: config.aws_secret,
+        aws_region: config.region,
+        function_name: config.function_name,
       },
       enabled: true,
     });
