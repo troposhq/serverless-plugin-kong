@@ -14,17 +14,23 @@ functions:
     handler: handler.hello
     events:
       - kong:
-          methods:
-            - GET
-          paths:
-            - /
-          protocols:
-            - http
-          aws_secret: asdfasdf
-          region: us-west-1
+          route:
+            methods:
+              - GET
+            paths:
+              - /
+            protocols:
+              - http
+          plugins:
+            - name: basic-auth
+              enabled: false
+              config:
+                hide_credentials: true
 
 custom:
   kong:
     admin_api_url: http://localhost:8001
-    aws_key: ${env:AWS_ACCESS_KEY_ID}
-    aws_secret: ${env:AWS_SECRET_ACCESS_KEY}
+    lambda:
+      config:
+        aws_key: ${env:AWS_ACCESS_KEY_ID, 'asdf'}
+        aws_secret: ${env:AWS_SECRET_ACCESS_KEY, 'asdf'}

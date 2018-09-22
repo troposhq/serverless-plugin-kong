@@ -22,30 +22,34 @@ class ServerlessPlugin {
     this.region = this.serverless.service.provider.region || 'us-east-1';
     this.providerName = this.serverless.service.provider.name;
 
-    const config = (this.serverless.config.serverless.service.custom || {}).kong || {}
+    const defaultConfig = (this.serverless.config.serverless.service.custom || {}).kong || {};
+    const defaultLambdaConfig = (defaultConfig.lambda || {}).config || {};
 
-    this.kong = new Kong({ adminAPIURL: config.admin_api_url || 'http://localhost:8001' });
+    this.kong = new Kong({ adminAPIURL: defaultConfig.admin_api_url || 'http://localhost:8001' });
 
     // Create the dummy service for Lambda
     const service = await this.kong.services.createOrUpdate('lambda-dummy-service', {
       url: 'http://localhost:8001',
     });
 
-    // create the routes in Kong for each function with a Kong event
-    for (const f of Object.keys(this.serverless.service.functions)) {
-      const func = this.serverless.service.functions[f];
-      // filter out kong events
-      const kongEvents = func.events.filter(e => e.kong !== undefined);
+    const functions = Object.keys(this.serverless.service.functions)
+      .map(key => this.serverless.service.functions[key]);
+
+    for (const f of functions) {
+      const kongEvents = f.events.filter(e => e.kong !== undefined);
+
       for (const event of kongEvents) {
-        // create the route
+        const eventLambdaConfig = (event.kong.lambda || {}).config || {};
+        const lambdaConfig = Object.assign(
+          {},
+          { aws_region: this.region, function_name: f.name },
+          defaultLambdaConfig,
+          eventLambdaConfig,
+        );
+
+        // create the route and add the aws-lambda plugin
         const route = await this.createRoute(service, event);
-        // add the plugin to the route
-        await this.createPlugin(route, {
-          aws_key: event.kong.aws_key || config.aws_key,
-          aws_secret: event.kong.aws_secret || config.aws_secret,
-          region: event.kong.region || config.region || this.region,
-          function_name: func.name,
-        });
+        await this.addLambdaPlugin(route, lambdaConfig);
       }
     }
   }
@@ -53,23 +57,15 @@ class ServerlessPlugin {
   createRoute(service, event) {
     return this.kong.routes.create({
       service: { id: service.id },
-      paths: event.kong.paths,
-      methods: event.kong.methods,
-      hosts: event.kong.hosts,
-      protocols: event.kong.protocols,
+      ...event.kong.route,
     });
   }
 
-  createPlugin(route, config) {
+  addLambdaPlugin(route, config) {
     return this.kong.routes.addPlugin({
       routeId: route.id,
       name: 'aws-lambda',
-      config: {
-        aws_key: config.aws_key,
-        aws_secret: config.aws_secret,
-        aws_region: config.region,
-        function_name: config.function_name,
-      },
+      config,
       enabled: true,
     });
   }

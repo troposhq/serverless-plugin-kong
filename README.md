@@ -19,7 +19,7 @@ plugins:
   - serverless-plugin-kong
 ```
 
-Add an event of type `kong` to your functions in `serverless.yml`.
+Add an event of type `kong` to your functions in `serverless.yml`. Configure the route with the `route` property. The `aws-lambda` plugin will be automatically configured.
 
 ```yaml
 # serverless.yml
@@ -31,12 +31,13 @@ functions:
     handler: handler.hello
     events:
       - kong:
-          methods:
-            - GET
-          paths:
-            - /
-          protocols:
-            - http
+          route:
+            methods:
+              - GET
+            paths:
+              - /
+            protocols:
+              - http
 ```
 
 Add configuration options to custom section of `serverless.yml`.
@@ -46,8 +47,10 @@ Add configuration options to custom section of `serverless.yml`.
 custom:
   kong:
     admin_api_url: http://localhost:8001
-    aws_key: ${env:AWS_ACCESS_KEY_ID}
-    aws_secret: ${env:AWS_SECRET_ACCESS_KEY}
+    lambda:
+      config:
+        aws_key: ${env:AWS_ACCESS_KEY_ID, 'asdf'}
+        aws_secret: ${env:AWS_SECRET_ACCESS_KEY, 'asdf'}
 ```
 
 ## Contributing
