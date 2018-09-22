@@ -1,6 +1,6 @@
 {
   "name": "@tropos/serverless-plugin-kong",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Serverless framework plugin to configure Kong.",
   "main": "index.js",
   "scripts": {
