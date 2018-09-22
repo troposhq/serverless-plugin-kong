@@ -53,6 +53,30 @@ custom:
         aws_secret: ${env:AWS_SECRET_ACCESS_KEY, 'asdf'}
 ```
 
+You can add additional plugins to a route by setting the `plugins` property on the event.
+```yaml
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - kong:
+          route:
+            methods:
+              - GET
+            paths:
+              - /
+            protocols:
+              - http
+
+          plugins:
+            - name: basic-auth
+              enabled: true
+              config:
+                hide_credentials: true
+            - name: correlation-id
+              enabled: true
+```
+
 ## Contributing
 
 Pull requests welcome! Please fork the repo and submit your PR.
