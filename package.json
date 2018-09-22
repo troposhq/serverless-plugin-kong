@@ -10,5 +10,10 @@
   "license": "MIT",
   "dependencies": {
     "@tropos/kong-admin-api-client": "^0.2.2"
+  },
+  "devDependencies": {
+    "eslint": "^5.6.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.14.0"
   }
 }
