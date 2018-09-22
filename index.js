@@ -32,14 +32,24 @@ class ServerlessPlugin {
       url: 'http://localhost:8001',
     });
 
+    // get the current routes in Kong
+    const existingRoutes = [];
+    let next = null;
+    do {
+      const result = await this.listRoutes();
+      existingRoutes.push(...result.data);
+      next = result.next; // eslint-disable-line
+    } while (next !== null);
+
     const functions = Object.keys(this.serverless.service.functions)
       .map(key => this.serverless.service.functions[key]);
 
     for (const f of functions) {
-      const kongEvents = f.events.filter(e => e.kong !== undefined);
+      const kongEvents = f.events.filter(e => e.kong !== undefined).map(x => x.kong);
 
       for (const event of kongEvents) {
-        const eventLambdaConfig = (event.kong.lambda || {}).config || {};
+        // construct config for the aws-lambda plugin
+        const eventLambdaConfig = (event.lambda || {}).config || {};
         const lambdaConfig = Object.assign(
           {},
           { aws_region: this.region, function_name: f.name },
@@ -50,18 +60,25 @@ class ServerlessPlugin {
         // create the route and add the aws-lambda plugin
         const route = await this.createRoute(service, event);
         await this.addLambdaPlugin(route, lambdaConfig);
-        const plugins = event.kong.plugins || [];
+
+        // add any other specified plugins
+        const plugins = event.plugins || [];
         for (const plugin of plugins) {
           await this.addPluginToRoute(route, plugin);
         }
       }
+    }
+
+    // delete the old routes
+    for (const r of existingRoutes) {
+      await this.kong.routes.delete(r.id);
     }
   }
 
   createRoute(service, event) {
     return this.kong.routes.create({
       service: { id: service.id },
-      ...event.kong.route,
+      ...event.route,
     });
   }
 
@@ -79,6 +96,14 @@ class ServerlessPlugin {
       routeId: route.id,
       ...plugin,
     });
+  }
+
+  /**
+   * Lists the existing routes in Kong for the lambda-dummy-service
+   */
+
+  listRoutes(offset) {
+    return this.kong.routes.list({ serviceNameOrID: 'lambda-dummy-service', offset });
   }
 }
 
