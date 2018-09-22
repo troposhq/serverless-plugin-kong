@@ -23,7 +23,7 @@ functions:
               - http
           plugins:
             - name: basic-auth
-              enabled: false
+              enabled: true
               config:
                 hide_credentials: true
 

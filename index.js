@@ -50,6 +50,10 @@ class ServerlessPlugin {
         // create the route and add the aws-lambda plugin
         const route = await this.createRoute(service, event);
         await this.addLambdaPlugin(route, lambdaConfig);
+        const plugins = event.kong.plugins || [];
+        for (const plugin of plugins) {
+          await this.addPluginToRoute(route, plugin);
+        }
       }
     }
   }
@@ -67,6 +71,13 @@ class ServerlessPlugin {
       name: 'aws-lambda',
       config,
       enabled: true,
+    });
+  }
+
+  addPluginToRoute(route, plugin) {
+    return this.kong.routes.addPlugin({
+      routeId: route.id,
+      ...plugin,
     });
   }
 }
