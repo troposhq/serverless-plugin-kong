@@ -26,6 +26,7 @@ class ServerlessPlugin {
     const defaultLambdaConfig = (defaultConfig.lambda || {}).config || {};
     const defaultVirtualService = defaultConfig.virtual_service || {};
     const detaultBasePath = defaultVirtualService.base_path || '';
+    const detaultTags = defaultConfig.tags;
 
     this.kong = new Kong({ adminAPIURL: defaultConfig.admin_api_url || 'http://localhost:8001' });
 
@@ -35,6 +36,7 @@ class ServerlessPlugin {
 
     const service = await this.kong.services.createOrUpdate(serviceName, {
       url: serviceUrl,
+      tags: detaultTags
     });
 
     // get the current routes in Kong
@@ -65,14 +67,15 @@ class ServerlessPlugin {
 
         // create the route and add the aws-lambda plugin
         let routeToAdd = await this.addBasePathToRoute(event.route, detaultBasePath)
+        routeToAdd = await this.addTagsToRoute(event.route, detaultTags)
 
         const route = await this.createRoute(service, routeToAdd);
-        await this.addLambdaPlugin(route, lambdaConfig);
+        await this.addLambdaPlugin(route, lambdaConfig, detaultTags);
 
         // add any other specified plugins
         const plugins = event.plugins || [];
         for (const plugin of plugins) {
-          await this.addPluginToRoute(route, plugin);
+          await this.addPluginToRoute(route, plugin, detaultTags);
         }
         // add name to new routes
         route.name = f.name
@@ -97,16 +100,18 @@ class ServerlessPlugin {
     });
   }
 
-  addLambdaPlugin(route, config) {
+  addLambdaPlugin(route, config, tags) {
     return this.kong.routes.addPlugin({
       routeId: route.id,
       name: 'aws-lambda',
       config,
+      tags: tags,
       enabled: true,
     });
   }
 
-  addPluginToRoute(route, plugin) {
+  addPluginToRoute(route, plugin, tags) {
+    plugin.tags = tags;
     return this.kong.routes.addPlugin({
       routeId: route.id,
       ...plugin,
@@ -132,6 +137,12 @@ class ServerlessPlugin {
     route.paths = newPaths
     return route
   }
+
+  addTagsToRoute(route, tags) {
+    route.tags = tags
+    return route
+  }
+
 }
 
 module.exports = ServerlessPlugin;

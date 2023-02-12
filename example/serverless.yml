@@ -34,6 +34,9 @@ custom:
       name: lambda-BFF-service
       url: http://localhost:8001
       base_path: /bff
+    tags:
+      - serverless-plugin-kong
+      - lambda-BFF-virtual-service
     lambda:
       config:
         aws_key: ${env:AWS_ACCESS_KEY_ID, 'asdf'}
