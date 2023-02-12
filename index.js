@@ -52,7 +52,7 @@ class ServerlessPlugin {
       const kongEvents = f.events.filter(e => e.kong !== undefined).map(x => x.kong);
 
       for (const event of kongEvents) {
-        // create the route and add the aws-lambda plugin
+        // create route and add the aws-lambda plugin
         const routeConfig = this.constructRouteConfig(event, detaultBasePath, detaultTags)
         const route = await this.createRoute(service, routeConfig);
 
@@ -64,20 +64,15 @@ class ServerlessPlugin {
         for (const plugin of plugins) {
           await this.addPluginToRoute(route, plugin, detaultTags);
         }
-        // add name to new routes
+        // add name to new routes (it's importante to add this names on kong routes only after delete old routes to avoid conflit )
         route.name = f.name
         newRoutes.push(route)
       }
     }
 
-    // delete the old routes
-    for (const r of existingRoutes) {
-      await this.kong.routes.delete(r.id);
-    }
-    // update route name
-    for (const newRoute of newRoutes) {
-      await this.updateRouteName(newRoute, newRoute.name)
-    }
+    await this.deleteOldRoutes(existingRoutes)
+
+    await this.updateAllNewRoutesNames(newRoutes)
 
   }
 
@@ -154,6 +149,23 @@ class ServerlessPlugin {
     route.tags = tags
     return route
   }
+
+  deleteOldRoutes(existingRoutes) {
+    const parallelExecution = []
+    for (const r of existingRoutes) {
+      parallelExecution.push(this.kong.routes.delete(r.id));
+    }
+    return Promise.all(parallelExecution)
+  }
+
+  updateAllNewRoutesNames(newRoutes) {
+    const parallelExecution = []
+    for (const newRoute of newRoutes) {
+      parallelExecution.push(this.updateRouteName(newRoute, newRoute.name))
+    }
+    return Promise.all(parallelExecution)
+  }
+
 }
 
 module.exports = ServerlessPlugin;
