@@ -77,6 +77,23 @@ functions:
               enabled: true
 ```
 
+You can you can optionally configure a virtual_service name, url, basepath and tags.
+```yaml
+custom:
+  kong:
+    admin_api_url: http://localhost:8001
+    virtual_service:
+      name: lambda-BFF-service
+      url: http://localhost:8001
+      base_path: /bff
+    tags:
+      - serverless-plugin-kong
+      - lambda-BFF-virtual-service
+    lambda:
+      config:
+        aws_key: ${env:AWS_ACCESS_KEY_ID, 'asdf'}
+        aws_secret: ${env:AWS_SECRET_ACCESS_KEY, 'asdf'}
+```
 ## Contributing
 
 Pull requests welcome! Please fork the repo and submit your PR.
