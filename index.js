@@ -33,18 +33,14 @@ class ServerlessPlugin {
     // Create a Virtual Service for Lambda Functions
     const serviceName = defaultVirtualService.name || this.serverless.configurationInput.service
     const serviceUrl = defaultVirtualService.url || 'http://localhost:8000'
-
-    const service = await this.kong.services.createOrUpdate(serviceName, {
-      url: serviceUrl,
-      tags: detaultTags
-    });
+    const service = await this.createVirtualService(serviceName, serviceUrl, detaultTags)
 
     // get the current routes in Kong
     const existingRoutes = [];
     const newRoutes = [];
     let next = null;
     do {
-      const result = await this.listRoutes();
+      const result = await this.listRoutes(serviceName);
       existingRoutes.push(...result.data);
       next = result.next; // eslint-disable-line
     } while (next !== null);
@@ -56,20 +52,11 @@ class ServerlessPlugin {
       const kongEvents = f.events.filter(e => e.kong !== undefined).map(x => x.kong);
 
       for (const event of kongEvents) {
-        // construct config for the aws-lambda plugin
-        const eventLambdaConfig = (event.lambda || {}).config || {};
-        const lambdaConfig = Object.assign(
-          {},
-          { aws_region: this.region, function_name: f.name },
-          defaultLambdaConfig,
-          eventLambdaConfig,
-        );
-
         // create the route and add the aws-lambda plugin
-        let routeToAdd = await this.addBasePathToRoute(event.route, detaultBasePath)
-        routeToAdd = await this.addTagsToRoute(event.route, detaultTags)
+        const routeConfig = this.constructRouteConfig(event, detaultBasePath, detaultTags)
+        const route = await this.createRoute(service, routeConfig);
 
-        const route = await this.createRoute(service, routeToAdd);
+        const lambdaConfig = this.constructLambdaConfig(event, defaultLambdaConfig, f)
         await this.addLambdaPlugin(route, lambdaConfig, detaultTags);
 
         // add any other specified plugins
@@ -91,12 +78,37 @@ class ServerlessPlugin {
     for (const newRoute of newRoutes) {
       await this.updateRouteName(newRoute, newRoute.name)
     }
+
   }
 
-  createRoute(service, event) {
+  createVirtualService(name, url, tags) {
+    return this.kong.services.createOrUpdate(name, {
+      url: url,
+      tags: tags
+    });
+  }
+
+  constructLambdaConfig(event, defaultLambdaConfig, f) {
+    const eventLambdaConfig = (event.lambda || {}).config || {};
+    const lambdaConfig = Object.assign(
+      {},
+      { aws_region: this.region, function_name: f.name },
+      defaultLambdaConfig,
+      eventLambdaConfig,
+    );
+    return lambdaConfig
+  }
+
+  constructRouteConfig(event, detaultBasePath, detaultTags) {
+    let routeConfig = this.addBasePathToRoute(event.route, detaultBasePath)
+    routeConfig = this.addTagsToRoute(event.route, detaultTags)
+    return routeConfig
+  }
+
+  createRoute(service, route) {
     return this.kong.routes.create({
       service: { id: service.id },
-      ...event.route,
+      ...route,
     });
   }
 
@@ -125,8 +137,8 @@ class ServerlessPlugin {
     );
   }
 
-  listRoutes(offset) {
-    return this.kong.routes.list({ serviceNameOrID: 'lambda-dummy-service', offset });
+  listRoutes(serviceName) {
+    return this.kong.routes.list({ serviceNameOrID: serviceName });
   }
 
   addBasePathToRoute(route, basePath) {
@@ -142,7 +154,6 @@ class ServerlessPlugin {
     route.tags = tags
     return route
   }
-
 }
 
 module.exports = ServerlessPlugin;
