@@ -25,7 +25,6 @@ class ServerlessPlugin {
     const defaultConfig = (this.serverless.config.serverless.service.custom || {}).kong || {};
     const defaultLambdaConfig = (defaultConfig.lambda || {}).config || {};
     const defaultVirtualService = defaultConfig.virtual_service || {};
-    const detaultBasePath = defaultVirtualService.base_path || '';
 
     this.kong = new Kong({ adminAPIURL: defaultConfig.admin_api_url || 'http://localhost:8001' });
 
@@ -39,6 +38,7 @@ class ServerlessPlugin {
 
     // get the current routes in Kong
     const existingRoutes = [];
+    const newRoutes = [];
     let next = null;
     do {
       const result = await this.listRoutes();
@@ -71,12 +71,19 @@ class ServerlessPlugin {
         for (const plugin of plugins) {
           await this.addPluginToRoute(route, plugin);
         }
+        // add name to new routes
+        route.name = f.name
+        newRoutes.push(route)
       }
     }
 
     // delete the old routes
     for (const r of existingRoutes) {
       await this.kong.routes.delete(r.id);
+    }
+    // update route name
+    for (const newRoute of newRoutes) {
+      await this.updateRouteName(newRoute, newRoute.name)
     }
   }
 
@@ -103,9 +110,12 @@ class ServerlessPlugin {
     });
   }
 
-  /**
-   * Lists the existing routes in Kong for the lambda-dummy-service
-   */
+  updateRouteName(route, routeName) {
+    return this.kong.routes.update(
+      route.id,
+      {name: routeName},
+    );
+  }
 
   listRoutes(offset) {
     return this.kong.routes.list({ serviceNameOrID: 'lambda-dummy-service', offset });
