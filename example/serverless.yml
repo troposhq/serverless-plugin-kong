@@ -7,7 +7,7 @@ service: example
 
 provider:
   name: aws
-  runtime: nodejs8.10
+  runtime: nodejs18.x
 
 functions:
   hello:
@@ -30,6 +30,10 @@ functions:
 custom:
   kong:
     admin_api_url: http://localhost:8001
+    virtual_service:
+      name: lambda-BFF-service
+      url: http://localhost:8001
+      base_path: /bff
     lambda:
       config:
         aws_key: ${env:AWS_ACCESS_KEY_ID, 'asdf'}

@@ -24,12 +24,17 @@ class ServerlessPlugin {
 
     const defaultConfig = (this.serverless.config.serverless.service.custom || {}).kong || {};
     const defaultLambdaConfig = (defaultConfig.lambda || {}).config || {};
+    const defaultVirtualService = defaultConfig.virtual_service || {};
+    const detaultBasePath = defaultVirtualService.base_path || '';
 
     this.kong = new Kong({ adminAPIURL: defaultConfig.admin_api_url || 'http://localhost:8001' });
 
-    // Create the dummy service for Lambda
-    const service = await this.kong.services.createOrUpdate('lambda-dummy-service', {
-      url: 'http://localhost:8001',
+    // Create a Virtual Service for Lambda Functions
+    const serviceName = defaultVirtualService.name || this.serverless.configurationInput.service
+    const serviceUrl = defaultVirtualService.url || 'http://localhost:8000'
+
+    const service = await this.kong.services.createOrUpdate(serviceName, {
+      url: serviceUrl,
     });
 
     // get the current routes in Kong
