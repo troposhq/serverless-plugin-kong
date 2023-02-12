@@ -25,6 +25,7 @@ class ServerlessPlugin {
     const defaultConfig = (this.serverless.config.serverless.service.custom || {}).kong || {};
     const defaultLambdaConfig = (defaultConfig.lambda || {}).config || {};
     const defaultVirtualService = defaultConfig.virtual_service || {};
+    const detaultBasePath = defaultVirtualService.base_path || '';
 
     this.kong = new Kong({ adminAPIURL: defaultConfig.admin_api_url || 'http://localhost:8001' });
 
@@ -63,7 +64,9 @@ class ServerlessPlugin {
         );
 
         // create the route and add the aws-lambda plugin
-        const route = await this.createRoute(service, event);
+        let routeToAdd = await this.addBasePathToRoute(event.route, detaultBasePath)
+
+        const route = await this.createRoute(service, routeToAdd);
         await this.addLambdaPlugin(route, lambdaConfig);
 
         // add any other specified plugins
@@ -119,6 +122,15 @@ class ServerlessPlugin {
 
   listRoutes(offset) {
     return this.kong.routes.list({ serviceNameOrID: 'lambda-dummy-service', offset });
+  }
+
+  addBasePathToRoute(route, basePath) {
+    const newPaths = [];
+    for (const path of route.paths) {
+      newPaths.push(basePath + path)
+    }
+    route.paths = newPaths
+    return route
   }
 }
 
